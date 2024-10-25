@@ -2,23 +2,23 @@
 
 ## 说明：
 本项目用于在虚拟机环境（Ubuntu 22.04.4 / VMware 17 PRO）中可视化仿真佳安A10双臂机器人。
-依赖的库包括 ROS2，Rviz，aris。\
+依赖的库包括 ROS2，Rviz，aris。
 
-ROS2 版本为 Humble，推荐使用鱼香ros安装，安装过程会一同安装 python 与 vscode：\
+ROS2 版本为 Humble，推荐使用鱼香ros安装，安装过程会一同安装 python 与 vscode：
 https://fishros.com/d2lros2
 
-aris安装过程请参考：\
+aris安装过程请参考：
 https://github.com/py0330/Aris
 
 代码中默认 aris 安装版本为 aris-2.3.10.240826，如有不同请自行修改 cmakelist
 
-Rviz 一般已跟随 ROS 安装，但仍需使用命令行安装 gui 调试窗口：\
+Rviz 一般已跟随 ROS 安装，但仍需使用命令行安装 gui 调试窗口：
 ```bash
 sudo apt install ros-humble-joint-state-publisher-gui
 ```
 
 ## 使用：
-本项目文件为 ROS2 下的工作空间，建议使用 vscode 进行编译及后续操作。\
+本项目文件为 ROS2 下的工作空间，建议使用 vscode 进行编译及后续操作。
 在 vscode 中推荐安装的插件包括：
 1. C++ 及其扩展相关
 2. Cmake 相关工具
