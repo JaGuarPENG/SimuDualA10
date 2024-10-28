@@ -29,6 +29,8 @@ namespace robot
 		virtual ~ModelForward();
 		explicit ModelForward(const std::string& name = "ModelForward");
 	private:
+		struct Imp;
+		aris::core::ImpPtr<Imp> imp_;
 	};
 
 
@@ -150,6 +152,21 @@ class ForceAlign :public aris::core::CloneObject<ForceAlign, aris::plan::Plan>
 		struct Imp;
 		aris::core::ImpPtr<Imp> imp_;
 	
+	};
+
+
+		class PegInHole :public aris::core::CloneObject<PegInHole, aris::plan::Plan>
+	{
+	public:
+		auto virtual prepareNrt()->void;
+		auto virtual executeRT()->int;
+
+		virtual ~PegInHole();
+		explicit PegInHole(const std::string& name = "PegInHole");
+	private:
+		struct Imp;
+		aris::core::ImpPtr<Imp> imp_;
+
 	};
 
 }

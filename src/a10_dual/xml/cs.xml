@@ -855,6 +855,10 @@
 					</GroupParam>
 				</Command>
 			</ForceDrag>
+            <PegInHole name="plan">
+				<Command __prop_name__="command" name="m_ph">
+				</Command>
+			</PegInHole>
 		</PlanPoolObject>
     </PlanRoot>
     <InterfacePoolObject __prop_name__="interface"/>

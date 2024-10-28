@@ -50,3 +50,13 @@ ros2 launch dualarm display.launch.py
 值得注意的是，打开新的终端时需要执行上述安装指令，同时在 Rviz 打开后请关闭 joint-state-publisher-gui，否则会影响使用指令仿真。
 
 当上述程序成功打开后，终端会显示 Control Server Init，此时机器人控制器已成功启动，可以输入编写好的指令操控仿真。
+
+## 注意事项：
+若执行程序时报错找不到 libaris.so 动态库，使用下述指令写入 aris 安装路径中的 .so 文件的路径：
+```bash
+sudo gedit /etc/ld.so.conf
+```
+再执行以下指令：
+```bash
+sudo ldconfig
+```
