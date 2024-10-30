@@ -237,7 +237,7 @@ namespace robot
 
 		for (int i = 0; i < 12; i++)
 		{
-			current_angle[i] = controller()->motorPool()[i].targetPos();
+			current_angle[i] = controller()->motorPool()[i].actualPos();
 		}
 		
 		if(!imp_->init)
@@ -389,7 +389,7 @@ namespace robot
 	auto ModelInit::prepareNrt()->void {
 
 		for (auto& m : motorOptions()) m =
-            aris::plan::Plan::CHECK_NONE |
+			aris::plan::Plan::CHECK_NONE |
 			aris::plan::Plan::NOT_CHECK_POS_CONTINUOUS_SECOND_ORDER;
 
 
@@ -397,18 +397,76 @@ namespace robot
 	auto ModelInit::executeRT()->int {
 
 
-		double eePos[12] = { 0 };
+		//dual transform modelbase into multimodel
+		auto& dualArm = dynamic_cast<aris::dynamic::MultiModel&>(modelBase()[0]);
+		//at(0) -> Arm1 -> white
+		auto& arm1 = dualArm.subModels().at(0);
+		//at(1) -> Arm2 -> blue
+		auto& arm2 = dualArm.subModels().at(1);
 
-		static double move = 0.0001;
-		static double tolerance = 0.00009;
+		//transform to model
+		auto& model_a1 = dynamic_cast<aris::dynamic::Model&>(arm1);
+		auto& model_a2 = dynamic_cast<aris::dynamic::Model&>(arm2);
 
-		static double init_pos[12] = 
-		{ 0, 0, 5 * PI / 6, -5 * PI / 6, - PI / 2, 0, 
+		//End Effector
+		auto& eeA1 = dynamic_cast<aris::dynamic::GeneralMotion&>(model_a1.generalMotionPool().at(0));
+		auto& eeA2 = dynamic_cast<aris::dynamic::GeneralMotion&>(model_a2.generalMotionPool().at(0));
+
+		static double tolerance = 0.0001;
+
+		aris::Size total_count;
+
+		static double joint_vel_max = 15;
+		static double joint_acc_max = 100;
+		static double joint_dec_max = 100;
+
+		static double init_pos[12] =
+		{ 0, 0, 5 * PI / 6, -5 * PI / 6, -PI / 2, 0,
 		0, 0, -5 * PI / 6, 5 * PI / 6, PI / 2, 0 };
 
-		modelBase()->setInputPos(init_pos);
+		auto daJointMove = [&](double target_mp_[12])
+		{
+			double current_angle[12] = { 0 };
+			double move = 0.00005;
 
-        if (modelBase()->forwardDynamics())
+			for (int i = 0; i < 12; i++)
+			{
+				current_angle[i] = controller()->motorPool()[i].targetPos();
+			}
+
+			for (int i = 0; i < 12; i++)
+			{
+				if (current_angle[i] <= target_mp_[i] - move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] + move);
+				}
+				else if (current_angle[i] >= target_mp_[i] + move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] - move);
+				}
+			}
+		};
+	
+
+		auto motorsPositionCheck = [](const double* current_sa_angle_, const double* target_pos_, size_t dim_)
+		{
+			for (int i = 0; i < dim_; i++)
+			{
+				if (std::fabs(current_sa_angle_[i] - target_pos_[i]) >= tolerance)
+				{
+					return false;
+				}
+			}
+
+			return true;
+		};
+
+
+
+
+		dualArm.setInputPos(init_pos);
+
+		if (dualArm.forwardKinematics())
 		{
 			throw std::runtime_error("Forward Kinematics Position Failed!");
 		}
@@ -422,76 +480,42 @@ namespace robot
 		}
 
 
-		auto motorsPositionCheck = [=]()
-		{
-			for(int i = 0; i < 12; i++)
-			{
-				if(std::fabs(current_angle[i]-init_pos[i])>=move)
-				{
-					return false;
-				}
-			}
 
-			for (int i = 0; i < 12; i++)
-			{
-				controller()->motorPool()[i].setTargetPos(init_pos[i]);
-			}
-
-			return true;
-		};
+		daJointMove(init_pos);
 
 
 
-		for (int i = 0; i < 12; i++)
-		{
-			if (current_angle[i] <= init_pos[i] - move)
-			{
-				controller()->motorPool()[i].setTargetPos(current_angle[i] + move);
-			}
-			else if (current_angle[i] >= init_pos[i] + move)
-			{
-				controller()->motorPool()[i].setTargetPos(current_angle[i] - move);
-			}
-		}
-	
 
-
-	
 
 		if (count() % 1000 == 0)
 		{
-			mout()<<current_angle[0]<<current_angle[1]<<current_angle[2]<<current_angle[3]<<current_angle[4]
-			<<current_angle[5]<<current_angle[6]<<current_angle[7]<<current_angle[8]<<current_angle[9]
-			<<current_angle[10]<<current_angle[11]<<std::endl;
+			mout() << current_angle[0] << '\t' << current_angle[1] << '\t' << current_angle[2] << '\t' << current_angle[3] << '\t' << current_angle[4] << '\t'
+				<< current_angle[5] << '\t' << current_angle[6] << '\t' << current_angle[7] << '\t' << current_angle[8] << '\t' << current_angle[9] << '\t'
+				<< current_angle[10] << '\t' << current_angle[11] << '\t' << std::endl;
 		}
 
 
-		if (motorsPositionCheck())
+		if (motorsPositionCheck(current_angle, init_pos, 12))
 		{
 
-			mout()<<"Back to Init Position"<<std::endl;
-			modelBase()->setInputPos(current_angle);
-			if (modelBase()->forwardKinematics())std::cout << "forward failed" << std::endl;
-			
-			mout()<<"current angle: \n"<<current_angle[0]<<current_angle[1]<<current_angle[2]<<current_angle[3]<<current_angle[4]
-			<<current_angle[5]<<current_angle[6]<<current_angle[7]<<current_angle[8]<<current_angle[9]
-			<<current_angle[10]<<current_angle[11]<<std::endl;
+			mout() << "Back to Init Position" << std::endl;
+			dualArm.setInputPos(current_angle);
+			if (dualArm.forwardKinematics())std::cout << "forward failed" << std::endl;
 
-			modelBase()->getOutputPos(eePos);
-			mout() << "current end position: \n" <<eePos[0]<<eePos[1]<<eePos[2]<<eePos[3]<<eePos[4]<<eePos[5]
-			<<eePos[6]<<eePos[7]<<eePos[8]<<eePos[9]<<eePos[10]<<eePos[11]<<std::endl;
-
+			mout() << "current angle: \n" << current_angle[0] <<'\t' << current_angle[1] << '\t' << current_angle[2] << '\t' << current_angle[3] << '\t' << current_angle[4] << '\t'
+				<< current_angle[5] << '\t' << current_angle[6] << '\t' << current_angle[7] << '\t' << current_angle[8] << '\t' << current_angle[9] << '\t'
+				<< current_angle[10] << '\t' << current_angle[11] << '\t' << std::endl;
 
 			return 0;
 		}
 		else
 		{
-			if(count()==28000)
+			if (count() == 80000)
 			{
-				mout()<<"Over Time"<<std::endl;
+				mout() << "Over Time" << std::endl;
 			}
-			
-			return 28000 - count();
+
+			return 80000 - count();
 		}
 	}
 	ModelInit::ModelInit(const std::string& name)
@@ -726,84 +750,47 @@ namespace robot
 		// Only One Arm Move Each Command
 		auto saJointMove = [&](double target_mp_[6], int m_)
 		{
-			double mp[12];
-			for (std::size_t i = (0 + 6 * m_); i < (6 + 6 * m_); ++i)
+			double current_angle[12] = { 0 };
+			double move = 0.00005;
+
+			for (int i = 0; i < 12; i++)
 			{
+				current_angle[i] = controller()->motorPool()[i].targetPos();
+			}
 
-				if (controller()->motorPool()[i].actualPos() - target_mp_[i - 6 * m_] < 8 / 180 * PI) {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i - 6 * m_] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i - 6 * m_] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i - 6 * m_];
-
-					}
+			for (int i = 0 + (6 * m_); i < 6 + (6 * m_); i++)
+			{
+				if (current_angle[i] <= target_mp_[i] - move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] + move);
 				}
-				else {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i - 6 * m_] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i - 6 * m_] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i - 6 * m_];
-
-					}
-
+				else if (current_angle[i] >= target_mp_[i] + move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] - move);
 				}
-				controller()->motorPool()[i].setTargetPos(mp[i]);
 			}
 		};
 
 		auto daJointMove = [&](double target_mp_[12])
 		{
-			double mp[12];
+			double current_angle[12] = { 0 };
+			double move = 0.00005;
 
-			for (std::size_t i = 0; i < 12; ++i)
+			for (int i = 0; i < 12; i++)
 			{
+				current_angle[i] = controller()->motorPool()[i].targetPos();
+			}
 
-				if (controller()->motorPool()[i].actualPos() - target_mp_[i] < 8 / 180 * PI) {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i];
-
-					}
+			for (int i = 0; i < 12; i++)
+			{
+				if (current_angle[i] <= target_mp_[i] - move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] + move);
 				}
-				else {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i];
-
-					}
-
+				else if (current_angle[i] >= target_mp_[i] + move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] - move);
 				}
-				controller()->motorPool()[i].setTargetPos(mp[i]);
 			}
 		};
 
@@ -1419,43 +1406,24 @@ namespace robot
 
 		auto daJointMove = [&](double target_mp_[12])
 		{
-			double mp[12];
+			double current_angle[12] = { 0 };
+			double move = 0.00005;
 
-			for (std::size_t i = 0; i < 12; ++i)
+			for (int i = 0; i < 12; i++)
 			{
+				current_angle[i] = controller()->motorPool()[i].targetPos();
+			}
 
-				if (controller()->motorPool()[i].actualPos() - target_mp_[i] < 8 / 180 * PI) {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i];
-
-					}
+			for (int i = 0; i < 12; i++)
+			{
+				if (current_angle[i] <= target_mp_[i] - move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] + move);
 				}
-				else {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i];
-
-					}
-
+				else if (current_angle[i] >= target_mp_[i] + move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] - move);
 				}
-				controller()->motorPool()[i].setTargetPos(mp[i]);
 			}
 		};
 
@@ -1726,7 +1694,7 @@ namespace robot
 
 
 
-struct ForceKeep::Imp {
+	struct ForceKeep::Imp {
 
 			//Flag
 			bool init = false;
@@ -1780,7 +1748,7 @@ struct ForceKeep::Imp {
 			std::array<double, 10> force_buffer[6] = {};
 			int buffer_index[6]{ 0 };
 		};
-auto ForceKeep::prepareNrt() -> void
+	auto ForceKeep::prepareNrt() -> void
 	{
 		for (auto& m : motorOptions()) m =
 			aris::plan::Plan::CHECK_NONE |
@@ -1790,7 +1758,7 @@ auto ForceKeep::prepareNrt() -> void
 		gc.loadPLVector(imp_->arm1_p_vector, imp_->arm1_l_vector, imp_->arm2_p_vector, imp_->arm2_l_vector);
 		mout() << "Load P & L Vector" << std::endl;
 	}
-auto ForceKeep::executeRT() -> int
+	auto ForceKeep::executeRT() -> int
 	{
 		//dual transform modelbase into multimodel
 		auto& dualArm = dynamic_cast<aris::dynamic::MultiModel&>(modelBase()[0]);
@@ -1880,43 +1848,24 @@ auto ForceKeep::executeRT() -> int
 
 		auto daJointMove = [&](double target_mp_[12])
 		{
-			double mp[12];
+			double current_angle[12] = { 0 };
+			double move = 0.00005;
 
-			for (std::size_t i = 0; i < 12; ++i)
+			for (int i = 0; i < 12; i++)
 			{
+				current_angle[i] = controller()->motorPool()[i].targetPos();
+			}
 
-				if (controller()->motorPool()[i].actualPos() - target_mp_[i] < 8 / 180 * PI) {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i];
-
-					}
+			for (int i = 0; i < 12; i++)
+			{
+				if (current_angle[i] <= target_mp_[i] - move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] + move);
 				}
-				else {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i];
-
-					}
-
+				else if (current_angle[i] >= target_mp_[i] + move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] - move);
 				}
-				controller()->motorPool()[i].setTargetPos(mp[i]);
 			}
 		};
 
@@ -2035,12 +1984,12 @@ auto ForceKeep::executeRT() -> int
 			}
 
 			//Test
-			for (std::size_t i = 0; i < 12; ++i)
-			{
-				controller()->motorPool()[i].setTargetPos(init_angle[i]);
-			}
+			//for (std::size_t i = 0; i < 12; ++i)
+			//{
+			//	controller()->motorPool()[i].setTargetPos(init_angle[i]);
+			//}
 
-			//daJointMove(init_angle);
+			daJointMove(init_angle);
 
 			//if (count() % 1000 == 0)
 			//{
@@ -2395,7 +2344,7 @@ auto ForceKeep::executeRT() -> int
 
 		return 30000 - count();
 	}
-ForceKeep::ForceKeep(const std::string& name)
+	ForceKeep::ForceKeep(const std::string& name)
 	{
 		aris::core::fromXmlString(command(),
 			"<Command name=\"m_fk\">"
@@ -2404,11 +2353,11 @@ ForceKeep::ForceKeep(const std::string& name)
 			"	</GroupParam>"
 			"</Command>");
 	}
-ForceKeep::~ForceKeep() = default;
+	ForceKeep::~ForceKeep() = default;
 
 
 
-struct ForceDrag::Imp {
+	struct ForceDrag::Imp {
 
 			//Flag
 			bool init = false;
@@ -2458,7 +2407,7 @@ struct ForceDrag::Imp {
 			std::array<double, 10> force_buffer[6] = {};
 			int buffer_index[6]{ 0 };
 		};
-auto ForceDrag::prepareNrt() -> void
+	auto ForceDrag::prepareNrt() -> void
 	{
 		for (auto& m : motorOptions()) m =
 			aris::plan::Plan::CHECK_NONE |
@@ -2468,7 +2417,7 @@ auto ForceDrag::prepareNrt() -> void
 		gc.loadPLVector(imp_->arm1_p_vector, imp_->arm1_l_vector, imp_->arm2_p_vector, imp_->arm2_l_vector);
 		mout() << "Load P & L Vector" << std::endl;
 	}
-auto ForceDrag::executeRT() -> int
+	auto ForceDrag::executeRT() -> int
 	{
 		//dual transform modelbase into multimodel
 		auto& dualArm = dynamic_cast<aris::dynamic::MultiModel&>(modelBase()[0]);
@@ -2560,43 +2509,24 @@ auto ForceDrag::executeRT() -> int
 
 		auto daJointMove = [&](double target_mp_[12])
 		{
-			double mp[12];
+			double current_angle[12] = { 0 };
+			double move = 0.00005;
 
-			for (std::size_t i = 0; i < 12; ++i)
+			for (int i = 0; i < 12; i++)
 			{
+				current_angle[i] = controller()->motorPool()[i].targetPos();
+			}
 
-				if (controller()->motorPool()[i].actualPos() - target_mp_[i] < 8 / 180 * PI) {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i];
-
-					}
+			for (int i = 0; i < 12; i++)
+			{
+				if (current_angle[i] <= target_mp_[i] - move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] + move);
 				}
-				else {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i];
-
-					}
-
+				else if (current_angle[i] >= target_mp_[i] + move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] - move);
 				}
-				controller()->motorPool()[i].setTargetPos(mp[i]);
 			}
 		};
 
@@ -2721,7 +2651,7 @@ auto ForceDrag::executeRT() -> int
 				controller()->motorPool()[i].setTargetPos(init_angle[i]);
 			}
 
-			//daJointMove(init_angle);
+			daJointMove(init_angle);
 
 			//if (count() % 1000 == 0)
 			//{
@@ -3014,7 +2944,7 @@ auto ForceDrag::executeRT() -> int
 
 		return 10000 - count();
 	}
-ForceDrag::ForceDrag(const std::string& name)
+	ForceDrag::ForceDrag(const std::string& name)
 	{
 		aris::core::fromXmlString(command(),
 			"<Command name=\"m_fd\">"
@@ -3023,15 +2953,18 @@ ForceDrag::ForceDrag(const std::string& name)
 			"	</GroupParam>"
 			"</Command>");
 	}
-ForceDrag::~ForceDrag() = default;
+	ForceDrag::~ForceDrag() = default;
 
 
 
 
-struct PegInHole::Imp {
+	struct PegInHole::Imp {
 
 			//Flag
 			bool init = false;
+			bool stop1 = false;
+			bool stop2 = false;
+			bool stop3 = false;
 			bool phase1 = false;
 			bool phase2 = false;
 			bool phase3 = false;
@@ -3070,6 +3003,7 @@ struct PegInHole::Imp {
 
 			//Counter
 			int contact_count = 0;
+			int current_count = 0;
 
 			//Test
 			double actual_force[6]{ 0 };
@@ -3081,7 +3015,7 @@ struct PegInHole::Imp {
 			std::array<double, 10> force_buffer[6] = {};
 			int buffer_index[6]{ 0 };
 		};
-auto PegInHole::prepareNrt() -> void
+	auto PegInHole::prepareNrt() -> void
 	{
 		for (auto& m : motorOptions()) m =
 			aris::plan::Plan::CHECK_NONE |
@@ -3091,7 +3025,7 @@ auto PegInHole::prepareNrt() -> void
 		//gc.loadPLVector(imp_->arm1_p_vector, imp_->arm1_l_vector, imp_->arm2_p_vector, imp_->arm2_l_vector);
 		//mout() << "Load P & L Vector" << std::endl;
 	}
-auto PegInHole::executeRT() -> int
+	auto PegInHole::executeRT() -> int
 	{
 		//dual transform modelbase into multimodel
 		auto& dualArm = dynamic_cast<aris::dynamic::MultiModel&>(modelBase()[0]);
@@ -3109,7 +3043,7 @@ auto PegInHole::executeRT() -> int
 		auto& eeA2 = dynamic_cast<aris::dynamic::GeneralMotion&>(model_a2.generalMotionPool().at(0));
 
 		//ver 1.0 not limit on vel, only limit force
-		static double tolerance = 0.0001;
+		static double tolerance = 0.00005;
 		static double init_angle[12] =
 		{ 0, 0, 5 * PI / 6, -5 * PI / 6, -PI / 2, 0 ,
 		0, 0, -5 * PI / 6, 5 * PI / 6, PI / 2, 0 };
@@ -3117,6 +3051,7 @@ auto PegInHole::executeRT() -> int
 		static double trigger_force[6]{ 0.5,0.5,0.5,0.001,0.001,0.001 };
 		static double max_force[6]{ 10,10,10,5,5,5 };
 		static double trigger_vel[6]{ 0.0001,0.0001,0.0001,0.0001,0.0001,0.0001 };
+
 
 		GravComp gc;
 
@@ -3182,46 +3117,26 @@ auto PegInHole::executeRT() -> int
 
 		auto daJointMove = [&](double target_mp_[12])
 		{
-			double mp[12];
+			double current_angle[12] = { 0 };
+			double move = 0.00005;
 
-			for (std::size_t i = 0; i < 12; ++i)
+			for (int i = 0; i < 12; i++)
 			{
+				current_angle[i] = controller()->motorPool()[i].targetPos();
+			}
 
-				if (controller()->motorPool()[i].actualPos() - target_mp_[i] < 8 / 180 * PI) {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i];
-
-					}
+			for (int i = 0; i < 12; i++)
+			{
+				if (current_angle[i] <= target_mp_[i] - move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] + move);
 				}
-				else {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i];
-
-					}
-
+				else if (current_angle[i] >= target_mp_[i] + move)
+				{
+					controller()->motorPool()[i].setTargetPos(current_angle[i] - move);
 				}
-				controller()->motorPool()[i].setTargetPos(mp[i]);
 			}
 		};
-
 
 		auto motorsPositionCheck = [](const double* current_sa_angle_, const double* target_pos_, size_t dim_)
 		{
@@ -3239,42 +3154,24 @@ auto PegInHole::executeRT() -> int
 		//single arm move 1-->white 2-->blue
 		auto saJointMove = [&](double target_mp_[6], int m_)
 		{
-			double mp[12];
-			for (std::size_t i = (0 + 6 * m_); i < (6 + 6 * m_); ++i)
+			double current_angle[12] = { 0 };
+			double move = 0.00005;
+
+			for (int i = 0; i < 12; i++)
 			{
+				current_angle[i] = controller()->motorPool()[i].targetPos();
+			}
 
-				if (controller()->motorPool()[i].actualPos() - target_mp_[i - 6 * m_] < 8 / 180 * PI) {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i - 6 * m_] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i - 6 * m_] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i - 6 * m_];
-
-					}
-				}
-				else {
-					if (controller()->motorPool()[i].actualPos() >= target_mp_[i - 6 * m_] + 0.0001)
-					{
-
-						mp[i] = controller()->motorPool()[i].targetPos() - 0.0001;
-					}
-					else if (controller()->motorPool()[i].targetPos() <= target_mp_[i - 6 * m_] - 0.0001) {
-
-						mp[i] = controller()->motorPool()[i].targetPos() + 0.0001;
-					}
-					else {
-						mp[i] = target_mp_[i - 6 * m_];
-
-					}
-
-				}
-				controller()->motorPool()[i].setTargetPos(mp[i]);
+			for (int i = 0+(6*m_); i < 6+(6*m_); i++)
+			{
+			if (current_angle[i] <= target_mp_[i] - move)
+			{
+				controller()->motorPool()[i].setTargetPos(current_angle[i] + move);
+			}
+			else if (current_angle[i] >= target_mp_[i] + move)
+			{
+				controller()->motorPool()[i].setTargetPos(current_angle[i] - move);
+			}
 			}
 		};
 
@@ -3325,6 +3222,7 @@ auto PegInHole::executeRT() -> int
 				filtered_force_[i] = std::accumulate(imp_->force_buffer[i].begin(), imp_->force_buffer[i].end(), 0.0) / 10;
 			}
 		};
+
 
 
 		//for (std::size_t i = 0; i < 6; ++i)
@@ -3388,13 +3286,13 @@ auto PegInHole::executeRT() -> int
 
 			//daJointMove(init_angle);
 
-			//if (count() % 1000 == 0)
-			//{
+			if (count() % 1000 == 0)
+			{
 
-			//	mout() << current_angle[0] << '\t' << current_angle[1] << '\t' << current_angle[2] << '\t'
-			//		<< current_angle[3] << '\t' << current_angle[4] << '\t' << current_angle[5] << std::endl;
+				mout() << current_angle[0] << '\t' << current_angle[1] << '\t' << current_angle[2] << '\t'
+					<< current_angle[3] << '\t' << current_angle[4] << '\t' << current_angle[5] << std::endl;
 
-			//}
+			}
 
 			if (motorsPositionCheck(current_angle, init_angle, 12))
 			{
@@ -3411,24 +3309,27 @@ auto PegInHole::executeRT() -> int
 		//Phase 1 Approach to The Hole
 		else if (imp_->init && !imp_->phase1)
 		{
-			double assem_pos[6]{ 0.550, 0.039101, 0.291316, PI/2, -PI / 2, PI/2 };
+			//Tool
+			double assem_pos[6]{ 0.650, 0.039101, 0.291316, PI / 2, -PI / 2, PI / 2 };
 			double assem_angle[6]{ 0 };
-			double assem_rm[9]{0};
+			double assem_rm[9]{ 0 };
+			double assem_pm[16]{ 0 };
+			double stop_count = 1000;
+
 			//Define Initial Rotate Error
-			double rotate_angle[3]{0,15*2*PI/360, 0};
-			double rotate_rm[9]{0};
+			double rotate_angle[3]{ 0,15 * 2 * PI / 360, 0 };
+			double rotate_rm[9]{ 0 };
+			double desired_rm[9]{ 0 };
 
-			//aris::dynamic::s_re2rm(assem_pos + 3, rm_c, "321");
 			aris::dynamic::s_ra2rm(rotate_angle, rotate_rm);
+			aris::dynamic::s_re2rm(assem_pos + 3, assem_rm, "321");
+			aris::dynamic::s_mm(3, 3, 3, rotate_rm, assem_rm, desired_rm);
+			aris::dynamic::s_rm2re(desired_rm, assem_pos + 3, "321");
 
 
+			eeA1.getP(current_pos);
+			eeA1.setP(assem_pos);
 
-
-
-
-			model_a1.setOutputPos(assem_pos);
-
-			//eeA1.getP(current_pos);
 
 			if (model_a1.inverseKinematics())
 			{
@@ -3436,27 +3337,16 @@ auto PegInHole::executeRT() -> int
 			}
 
 			model_a1.getInputPos(assem_angle);
+
 			saJointMove(assem_angle, 0);
-
-
-			if (count() % 1000 == 0)
+			if(motorsPositionCheck(current_sa_angle, assem_angle, 6))
 			{
-				mout() << "pos: " << current_pos[0] << '\t' << current_pos[1] << '\t' << current_pos[2] << '\t'
-					<< current_pos[3] << '\t' << current_pos[4] << '\t' << current_pos[5] << std::endl;
-			}
-
-
-			if (motorsPositionCheck(current_sa_angle, assem_angle, 6))
-			{
-				mout() << "end pos: " << current_pos[0] << '\t' << current_pos[1] << '\t' << current_pos[2] << '\t'
-					<< current_pos[3] << '\t' << current_pos[4] << '\t' << current_pos[5] << std::endl;
 				imp_->phase1 = true;
-				mout() << "Assembly Start" << std::endl;
-
+				mout() << "Assembly Start !" << std::endl;
 			}
-			
+
 		}
-		//Phase 2 Contact Check
+		
 		else if(imp_->phase1 && !imp_->phase2)
 		{
 			double raw_force_checker[6]{ 0 };
@@ -3467,7 +3357,7 @@ auto PegInHole::executeRT() -> int
 			eeA1.getMpm(a1_pm);
 			eeA1.getP(current_pos);
 
-			if (current_pos[0] >= 0.610)
+			if (current_pos[0] >= 0.680)
 			{
 				imp_->actual_force[0] = -0.5;
 			}
@@ -3475,7 +3365,7 @@ auto PegInHole::executeRT() -> int
 			//Arm1
 			//getForceData(raw_force_checker, 0, imp_->init);
 			//gc.getCompFT(a1_pm, imp_->arm1_l_vector, imp_->arm1_p_vector, comp_force_checker);
-			if (count() % 1000 == 0) 
+			if (count() % 100 == 0) 
 			{
 				mout() << "pos: " << current_pos[0] << '\t' << current_pos[1] << '\t' << current_pos[2] << '\t'
 					<< current_pos[3] << '\t' << current_pos[4] << '\t' << current_pos[5] << std::endl;
@@ -3504,12 +3394,12 @@ auto PegInHole::executeRT() -> int
 
 		return 80000 - count();
 	}
-PegInHole::PegInHole(const std::string& name)
+	PegInHole::PegInHole(const std::string& name)
 	{
 		aris::core::fromXmlString(command(),
 			"<Command name=\"m_ph\"/>");
 	}
-PegInHole::~PegInHole() = default;
+	PegInHole::~PegInHole() = default;
 
 
 
