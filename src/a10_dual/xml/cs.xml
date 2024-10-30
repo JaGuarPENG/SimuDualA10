@@ -859,6 +859,14 @@
 				<Command __prop_name__="command" name="m_ph">
 				</Command>
 			</PegInHole>
+            <PegOutHole name="plan">
+				<Command __prop_name__="command" name="m_po">
+				</Command>
+			</PegOutHole>
+            <PegInHoleTest name="plan">
+				<Command __prop_name__="command" name="m_pt">
+				</Command>
+			</PegInHoleTest>
 		</PlanPoolObject>
     </PlanRoot>
     <InterfacePoolObject __prop_name__="interface"/>
