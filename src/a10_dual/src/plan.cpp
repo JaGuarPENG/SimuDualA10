@@ -338,11 +338,13 @@ auto GravComp::savePLVector(const double P1_[6], const double L1_[6], const doub
 }
 
 
+
+
 auto GravComp::loadPLVector(double P1_[6], double L1_[6], double P2_[6], double L2_[6]) -> void {
 
 	// Get Path
 	auto fspath = std::filesystem::absolute(".");
-    const std::string fsfile = "force_vector.txt";
+    const std::string fsfile = "Initforce.txt";
 	fspath = fspath / fsfile;
 
 	// Open file
@@ -370,6 +372,70 @@ auto GravComp::loadPLVector(double P1_[6], double L1_[6], double P2_[6], double 
 	// Read P Vector
 	for (int i = 0; i < 6; ++i) {
 		inFile >> L2_[i];
+	}
+
+	inFile.close();
+
+
+}
+
+auto GravComp::saveInitForce(const double arm1_init_force_[6], const double arm2_init_force_[6]) -> void {
+
+	// Get Path
+	auto fspath = std::filesystem::absolute(".");
+    const std::string fsfile = "init_force.txt";
+	fspath = fspath / fsfile;
+
+	// Open file
+    ofstream outFile(fspath);
+	if (!outFile) {
+		cerr << "Cannot Write Target File" << endl;
+		return;
+	}
+
+
+	for (int i = 0; i < 6; ++i) {
+		outFile << arm1_init_force_[i] << " ";
+	}
+	outFile << endl;
+
+	for (int i = 0; i < 6; ++i) {
+		outFile << arm2_init_force_[i] << " ";
+	}
+	outFile << endl;
+
+
+
+	outFile.close();
+
+
+}
+
+
+
+
+auto GravComp::loadInitForce(double arm1_init_force_[6], double arm2_init_force_[6]) -> void {
+
+	// Get Path
+	auto fspath = std::filesystem::absolute(".");
+    const std::string fsfile = "init_force.txt";
+	fspath = fspath / fsfile;
+
+	// Open file
+	ifstream inFile(fspath);
+	if (!inFile) {
+		cerr << "Cannot Read Target File" << endl;
+		return;
+	}
+
+	// Read P Vector
+	for (int i = 0; i < 6; ++i) {
+		inFile >> arm1_init_force_[i];
+	}
+
+	// Read P Vector
+	for (int i = 0; i < 6; ++i) {
+		inFile >> arm2_init_force_[i];
 	}
 
 	inFile.close();

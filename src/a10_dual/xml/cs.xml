@@ -863,10 +863,24 @@
 				<Command __prop_name__="command" name="m_po">
 				</Command>
 			</PegOutHole>
-            <PegInHoleTest name="plan">
-				<Command __prop_name__="command" name="m_pt">
+            <PegXYZ name="plan">
+				<Command __prop_name__="command" name="x">
+					<GroupParam name="group_param">
+						<Param name="model" abbreviation="m" default="0"/>
+						<Param name="direction" abbreviation="d" default="0"/>
+						<Param name="amplitude" abbreviation="a" default="1.0"/>
+					</GroupParam>
 				</Command>
-			</PegInHoleTest>
+			</PegXYZ>
+            <PegRPY name="plan">
+				<Command __prop_name__="command" name="r">
+					<GroupParam name="group_param">
+						<Param name="model" abbreviation="m" default="0"/>
+						<Param name="direction" abbreviation="d" default="1"/>
+						<Param name="amplitude" abbreviation="a" default="1.0"/>
+					</GroupParam>
+				</Command>
+			</PegRPY>
 		</PlanPoolObject>
     </PlanRoot>
     <InterfacePoolObject __prop_name__="interface"/>

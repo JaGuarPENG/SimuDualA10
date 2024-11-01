@@ -197,6 +197,35 @@ class ForceAlign :public aris::core::CloneObject<ForceAlign, aris::plan::Plan>
 
 	};
 
+	class PegXYZ :public aris::core::CloneObject<PegXYZ, aris::plan::Plan>
+	{
+	public:
+		auto virtual prepareNrt()->void;
+		auto virtual executeRT()->int;
+
+		virtual ~PegXYZ();
+		explicit PegXYZ(const std::string& name = "PegXYZ");
+	private:
+		struct Imp;
+		aris::core::ImpPtr<Imp> imp_;
+
+	};
+
+	class PegRPY :public aris::core::CloneObject<PegRPY, aris::plan::Plan>
+	{
+	public:
+		auto virtual prepareNrt()->void;
+		auto virtual executeRT()->int;
+
+		virtual ~PegRPY();
+		explicit PegRPY(const std::string& name = "PegRPY");
+	private:
+		struct Imp;
+		aris::core::ImpPtr<Imp> imp_;
+
+	};
+
+
 }
 
 
