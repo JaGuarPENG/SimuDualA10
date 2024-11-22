@@ -169,14 +169,14 @@ class ForceAlign :public aris::core::CloneObject<ForceAlign, aris::plan::Plan>
 
 	};
 
-	class PegInHoleTest :public aris::core::CloneObject<PegInHoleTest, aris::plan::Plan>
+	class HoleInPeg :public aris::core::CloneObject<HoleInPeg, aris::plan::Plan>
 	{
 	public:
 		auto virtual prepareNrt()->void;
 		auto virtual executeRT()->int;
 
-		virtual ~PegInHoleTest();
-		explicit PegInHoleTest(const std::string& name = "PegInHoleTest");
+		virtual ~HoleInPeg();
+		explicit HoleInPeg(const std::string& name = "HoleInPeg");
 	private:
 		struct Imp;
 		aris::core::ImpPtr<Imp> imp_;
@@ -224,6 +224,23 @@ class ForceAlign :public aris::core::CloneObject<ForceAlign, aris::plan::Plan>
 		aris::core::ImpPtr<Imp> imp_;
 
 	};
+
+	class Arm2Init : public aris::core::CloneObject<Arm2Init, aris::plan::Plan>
+    {
+    public:
+        auto virtual prepareNrt()->void;
+        auto virtual executeRT()->int;
+        virtual ~Arm2Init();
+        explicit Arm2Init(const std::string& name = "Arm2Init");
+
+    private:
+        struct Imp;
+        aris::core::ImpPtr<Imp> imp_;
+
+    };
+
+
+
 
 
 }

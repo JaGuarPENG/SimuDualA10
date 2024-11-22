@@ -273,7 +273,9 @@ auto GravComp::getCompFT(double current_pose_[16], double L_[6], double P_[6], d
 	aris::dynamic::s_pm2rm(current_pose_, current_rotate);
     getInverseRm(current_rotate, inv_rotate);
 
+    //aris::dynamic::s_mm(2,1,2,inv_rotate, aris::dynamic::ColMajor(3),L_vector,1,G_vector,1);
     aris::dynamic::s_mm(3,1,3,inv_rotate,L_vector,G_vector);
+
     //aris::dynamic::dsp(1, 3, G_vector);
 
 	// comp x y z
