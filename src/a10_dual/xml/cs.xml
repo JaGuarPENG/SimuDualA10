@@ -802,10 +802,6 @@
     </Controller>
     <PlanRoot __prop_name__="plan_root">
         <PlanPoolObject __prop_name__="plan_pool_object">
-		    <ModelGet name="plan">
-			    <Command __prop_name__="command" name="m_get">
-			    </Command>
-		    </ModelGet>
 		    <ModelInit name="plan">
 			    <Command __prop_name__="command" name="m_init">
 			    </Command>
@@ -818,29 +814,13 @@
 				<Command __prop_name__="command" name="m_set">
 				</Command>
 			</ModelSetPos>
-            <ModelMoveX name="plan">
-				<Command __prop_name__="command" name="m_x">
-					<GroupParam name="group_param">
-						<Param name="model" abbreviation="m" default="0"/>
-						<Param name="distance" abbreviation="d" default="10.0"/>
-						<Param name="orientation" abbreviation="o" default="1.0"/>
-					</GroupParam>
-				</Command>
-			</ModelMoveX>
-             <ModelComP name="plan">
-				<Command __prop_name__="command" name="m_comp">
+            <TCurveTest name="plan">
+				<Command __prop_name__="command" name="t_test">
 					<GroupParam name="group_param">
 						<Param name="model" abbreviation="m" default="0"/>
 					</GroupParam>
 				</Command>
-			</ModelComP>
-            <ForceAlign name="plan">
-				<Command __prop_name__="command" name="m_fa">
-                <GroupParam name="group_param">
-						<Param name="model" abbreviation="m" default="0"/>
-					</GroupParam>
-				</Command>
-			</ForceAlign>
+			</TCurveTest>
             <ForceKeep name="plan">
 				<Command __prop_name__="command" name="m_fk">
 					<GroupParam name="group_param">
@@ -855,46 +835,6 @@
 					</GroupParam>
 				</Command>
 			</ForceDrag>
-            <PegInHole name="plan">
-				<Command __prop_name__="command" name="m_ph">
-				</Command>
-			</PegInHole>
-            <HoleInPeg name="plan">
-                <Command __prop_name__="command" name="m_hp">
-                    <GroupParam name="group_param">
-                        <Param name="degree" abbreviation="d" default="0"/>
-                        <Param name="point" abbreviation="p" default="0"/>
-                    </GroupParam>
-                </Command>
-            </HoleInPeg>
-            <PegOutHole name="plan">
-				<Command __prop_name__="command" name="m_po">
-                    <GroupParam name="group_param">
-                        <Param name="model" abbreviation="m" default="0"/>
-                    </GroupParam>
-				</Command>
-			</PegOutHole>
-            <PegXYZ name="plan">
-				<Command __prop_name__="command" name="x">
-					<GroupParam name="group_param">
-						<Param name="model" abbreviation="m" default="0"/>
-						<Param name="direction" abbreviation="d" default="0"/>
-						<Param name="amplitude" abbreviation="a" default="1.0"/>
-					</GroupParam>
-				</Command>
-			</PegXYZ>
-            <PegRPY name="plan">
-				<Command __prop_name__="command" name="r">
-					<GroupParam name="group_param">
-						<Param name="model" abbreviation="m" default="0"/>
-						<Param name="direction" abbreviation="d" default="1"/>
-						<Param name="amplitude" abbreviation="a" default="1.0"/>
-					</GroupParam>
-				</Command>
-			</PegRPY>
-             <Arm2Init name="plan">
-                <Command __prop_name__="command" name="2_back"/>
-            </Arm2Init>
 		</PlanPoolObject>
     </PlanRoot>
     <InterfacePoolObject __prop_name__="interface"/>

@@ -22,7 +22,8 @@ IF(WIN32)
 endif(WIN32)
 include_directories(${aris_INCLUDE_DIRS})
 
-add_executable(a10_dual src/main.cpp src/aris_node.cpp src/robot.cpp src/robot.hpp src/plan.cpp src/plan.hpp)
+add_executable(a10_dual src/main.cpp src/aris_node.cpp src/basic_cmd.cpp src/gravcomp.cpp src/force_cmd.cpp src/t_curve.cpp)
+
 target_compile_features(a10_dual PUBLIC c_std_99 cxx_std_17)
 
 if(UNIX)

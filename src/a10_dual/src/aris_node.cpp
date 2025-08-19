@@ -1,5 +1,6 @@
 #include "aris_node.hpp"
-#include "robot.hpp"
+#include "force_cmd.hpp"
+#include "basic_cmd.hpp"
 #include "ament_index_cpp/get_package_share_directory.hpp"
 
 ArisNode::ArisNode(std::string name) : Node(name), cs_(aris::server::ControlServer::instance()) {
