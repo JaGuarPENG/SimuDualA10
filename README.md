@@ -1,4 +1,4 @@
-# A10_Dual_Linux
+# SimuDualA10: Simulation of dualarm A10 robot in ros rviz
 
 ## 说明：
 本项目用于在虚拟机环境（Ubuntu 22.04.4 / VMware 17 PRO）中可视化仿真佳安A10双臂机器人。
