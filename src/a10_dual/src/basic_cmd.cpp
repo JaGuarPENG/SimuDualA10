@@ -562,7 +562,7 @@ namespace basic_cmd
 	}
 	TCurveTest::~TCurveTest() = default;
 
-
+	// 必须进行指令注册，同时必须在xml文件中的PlanRoot下添加相应的节点
 	ARIS_REGISTRATION{
 		aris::core::class_<ModelInit>("ModelInit")
 			.inherit<aris::plan::Plan>();
