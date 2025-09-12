@@ -60,3 +60,13 @@ sudo gedit /etc/ld.so.conf
 ```bash
 sudo ldconfig
 ```
+
+## 初步教程：
+本项目代码主要包括 src/dualarm 以及 src/a10_dual 两处。其中，dualarm 下为 rviz 可视化所需配置资源，无需修改。a10_dual 下存储了相关的示例指令可供参考，相关代码内容简介如下：
+1. aris_node 将 aris 包装为 ros 下的一个节点，并以此向 ros 中发送信息。
+2. basic_cmd 为基础指令及教程，包含正逆运动学解算，机械臂电机控制，梯形曲线末端控制简单实现等。
+3. force_cmd 为基础力控指令，包括实现的导纳控制器以及阻抗控制器。由于仿真中无法引入接触力，需要用户自定义接触力模拟。
+4. gravcomp 为实现的机械臂末端重力补偿算法类
+5. t_curve 为梯形曲线类
+
+basic_cmd 类包含有详细的 aris 指令实现细节注释，请仔细参考。force_cmd 中的控制器指令均已在实机上部署测试过，可以作为力控实现的简单思路参考。
